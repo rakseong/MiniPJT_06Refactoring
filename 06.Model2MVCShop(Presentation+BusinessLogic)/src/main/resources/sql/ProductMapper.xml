@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper
+		PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+		"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="ProdMapper">
+ 	
+ 	
+	<resultMap id="prodSelectMap" type="prod">
+		<result property="fileName" 			column="image_file" 			jdbcType="VARCHAR"/>
+		<result property="manuDate"	column="manufacture_day" 		jdbcType="VARCHAR" />
+		<result property="price" 	column="price" 		jdbcType="NUMERIC" />
+		<result property="prodDetail" 				column="prod_detail" 					jdbcType="VARCHAR" />
+		<result property="prodName" 				column="prod_name" 					jdbcType="VARCHAR" />
+		<result property="prodNo" 			column="prod_no" 		jdbcType="INTEGER" />
+		<result property="regDate" 				column="reg_date" 					jdbcType="DATE" />
+		<result property="proTranCode" 			column="transaction_tran_code" 				jdbcType="VARCHAR"  />
+	</resultMap>
+	
+	<sql id="select-prod-list">
+		SELECT p.*,NVL(t.tran_status_code,0) transaction_tran_code 
+		FROM product p, transaction t 
+		<where> 
+			p.prod_no = t.prod_no(+)
+			<if test="searchCondition != null">
+				<if test="searchCondition == 0 and searchKeyword != ''">
+					AND p.prod_no LIKE '%${searchKeyword}%'
+				</if>
+				<if test="searchCondition == 1 and searchKeyword != ''">
+					AND p.prod_name LIKE '%${searchKeyword}%'
+				</if>
+			</if>
+			<if test="orderStandard == 0 and orderStandard != ''">
+				ORDER BY p.prod_no
+			</if>
+			<if test="orderStandard == 1 and orderStandard != ''">
+				ORDER BY p.price ASC
+			</if>
+			<if test="orderStandard == 2 and orderStandard != ''">
+				ORDER BY p.price DESC
+			</if>
+			<if test="orderStandard == 3 and orderStandard != ''">
+				ORDER BY p.prod_name
+			</if>
+		</where>
+	</sql>
+	
+	<!-- SQL : INSERT -->
+	<insert 	id="addProd"	parameterType="prod" >
+	 	INSERT INTO product
+		VALUES(seq_product_prod_no.nextval,#{prodName},#{prodDetail},
+		#{manuDate},#{price},#{fileName},SYSDATE)
+	 
+	 </insert>
+	 
+	 <select 	id="getProd"	parameterType="Integer"	resultMap="prodSelectMap">
+		SELECT p.*,NVL(t.tran_status_code,0) transaction_tran_code 
+		from product p, transaction t
+		WHERE p.prod_no = t.prod_no(+) AND p.prod_no=#{value}
+	 </select>
+	 
+	 <update	id="updateProd"	parameterType="prod" >
+	   	UPDATE product
+	   	<set>
+	   		PROD_NAME=#{prodName}, 
+	   		PROD_DETAIL=#{prodDetail}, 
+	   		MANUFACTURE_DAY=#{manuDate},
+	   		PRICE=#{price},
+	   		IMAGE_FILE=#{fileName}
+	   	</set>
+	   	WHERE PROD_NO = #{prodNo}
+	 </update>
+	 
+	 <select id="getProdList" parameterType="search" resultMap="prodSelectMap">
+	 	SELECT  *
+		FROM (	SELECT inner_table. * ,  ROWNUM AS row_seq
+				FROM ( 
+					<include refid="select-prod-list"/>
+				) inner_table 
+				WHERE ROWNUM &lt;= #{endRowNum} )
+		WHERE row_seq BETWEEN #{startRowNum} AND #{endRowNum}
+	 </select>
+	 
+	 <select id="getTotalCount" parameterType="search" resultType="int">
+	 	SELECT COUNT(*) 
+		FROM ( 
+			<include refid="select-prod-list"/>
+		) countTable
+	 </select>
+</mapper>
